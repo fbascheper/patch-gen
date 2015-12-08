@@ -85,13 +85,39 @@ class DistributionProcessor {
         }
 
         // Update name and version
-        final ModuleLoader loader = new LocalModuleLoader(mp.toArray(new File[mp.size()]));
+        List<File> repoRoots = new ArrayList<>();
+        for (File file : mp) {
+            repoRoots.add(file);
+            File[] overlays = file.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    return name.equals(".overlays");
+                }
+            });
+            for (File overlay : overlays) {
+                File[] cumulativePatches = overlay.listFiles(new FilenameFilter() {
+                    @Override
+                    public boolean accept(File dir, String name) {
+                        return !name.equals(".overlays");
+                    }
+                });
+
+                for (File cumulativePatch : cumulativePatches) {
+                    repoRoots.add(cumulativePatch);
+                }
+            }
+        }
+
+        Collections.reverse(repoRoots);
+
+        // final ModuleLoader loader = new LocalModuleLoader(mp.toArray(new File[mp.size()]));
+        final ModuleLoader loader = new LocalModuleLoader(repoRoots.toArray(new File[repoRoots.size()]));
         try {
             Module module = loader.loadModule(ModuleIdentifier.create("org.jboss.as.version"));
 
             final Class<?> clazz = module.getClassLoader().loadClass("org.jboss.as.version.ProductConfig");
             final Method resolveName = clazz.getMethod("resolveName");
-            final Method resolveVersion  = clazz.getMethod("resolveVersion");
+            final Method resolveVersion = clazz.getMethod("resolveVersion");
             final Constructor<?> constructor = clazz.getConstructor(ModuleLoader.class, String.class, Map.class);
 
             final Object productConfig = constructor.newInstance(loader, distributionRoot.getAbsolutePath(), Collections.emptyMap());
@@ -323,8 +349,7 @@ class DistributionProcessor {
             super(distribution);
         }
 
-        @Override
-        void addModuleRoot(DistributionContentItem item) {
+        @Override void addModuleRoot(DistributionContentItem item) {
             moduleRoots.add(item);
         }
 
@@ -349,8 +374,7 @@ class DistributionProcessor {
             super(distribution);
         }
 
-        @Override
-        void process(final DistributionContentItem parent, final File layerDir, final Distribution.ProcessedLayer processedLayer) {
+        @Override void process(final DistributionContentItem parent, final File layerDir, final Distribution.ProcessedLayer processedLayer) {
             processBundles(parent, layerDir, new ModuleContext() {
                 @Override
                 public void addModule(DistributionContentItem module) {
