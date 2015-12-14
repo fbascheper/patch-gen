@@ -108,7 +108,7 @@ class DistributionProcessor {
             }
         }
 
-        Collections.reverse(repoRoots);
+        Collections.sort(repoRoots, Collections.reverseOrder());
 
         // final ModuleLoader loader = new LocalModuleLoader(mp.toArray(new File[mp.size()]));
         final ModuleLoader loader = new LocalModuleLoader(repoRoots.toArray(new File[repoRoots.size()]));
